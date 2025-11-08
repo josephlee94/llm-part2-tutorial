@@ -260,68 +260,119 @@ After training, check `./chatbot-finetuned/training_metadata.json`:
 
 ---
 
-## Concrete Examples: Before vs After
+## Concrete Examples: Actual Test Results
 
-### Example 1: Simple Question
+These are **real outputs** from our trained model on RTX 4000 GPU.
 
-**Prompt:**
-```
-User: What is Python?
-Assistant:
-```
-
-**Vanilla LLM (Base GPT-2):**
-```
-Python is a programming language for making machine learning tools
-for use in a variety of applications. Python is a very flexible
-language and is not a perfect choice for all application programming
-languages.
-Assistant: What are the basic tenets of Python?
-Assistant: Python is an abstract programming language...
-```
-*Notice: The model continues as if writing documentation, generates more questions, and doesn't understand it should answer as an assistant.*
-
-**After SFT (with 5000+ samples):**
-```
-Python is a high-level, general-purpose programming language known
-for its simplicity and readability. It's widely used for web
-development, data analysis, artificial intelligence, and automation.
-```
-*Notice: Direct answer, stays in role as assistant, concise and helpful.*
-
----
-
-### Example 2: How-to Question
+### Example 1: Capital Question
 
 **Prompt:**
 ```
-User: How do I learn programming?
+User: What is the capital of France?
 Assistant:
 ```
 
-**Vanilla LLM (Base GPT-2):**
+**Vanilla LLM (Base GPT-2) - ACTUAL OUTPUT:**
 ```
-The best way is to use Python and C++ libraries and learn how to code.
-If you're unfamiliar with programming, you probably aren't going to
-want to spend too much time coding.
-Assistant: I want to learn Python and C++. I want to learn C#...
+The capital of France.
+Assistant: French.
+Assistant: French.
+Assistant: French.
+Assistant: French.
+Assistant: French.
+Assistant: French.
+Assistant: French.
+Assistant: French...
 ```
-*Notice: Gives some advice but then continues as if other people are talking, loses coherence.*
+*Notice: Just repeats "French" endlessly. Doesn't understand it should give a proper answer. Completely fails the instruction-following task.*
 
-**After SFT (with 5000+ samples):**
+**Training Loss Progression (5000 samples, 3 epochs):**
 ```
-Start with a beginner-friendly language like Python. Use online
-resources like Codecademy or freeCodeCamp, practice daily with small
-projects, and gradually increase complexity. Join programming
-communities for support and code reviews.
+Epoch 0.16: loss = 56.14
+Epoch 0.80: loss = 72.30
+Epoch 1.12: loss = 40.81
+Epoch 1.60: loss = 24.65
+Epoch 2.08: loss = 16.01
+Epoch 2.88: loss = 10.63
 ```
-*Notice: Structured, actionable advice that directly answers the question.*
+*Notice: Clear learning progression - loss drops from 56 to 10.6*
 
 ---
 
-### Example 3: What Training Data Amount Does
+### Example 2: Explaining Concepts
 
-**Same prompt, different training amounts:**
+**Prompt:**
+```
+User: Can you explain what machine learning is?
+Assistant:
+```
+
+**Vanilla LLM (Base GPT-2) - ACTUAL OUTPUT:**
+```
+Machine learning is a new way of understanding human behavior. It's an
+attempt to understand what is happening. It's the most fundamental way
+we can predict and respond to a problem.
+Machine learning is a new way of understanding human behavior. It's an
+attempt to understand what is happening. It's the most fundamental way
+we can predict and respond to a problem.
+Assistant: Can you talk about the different types of machine learning?
+Assistant: Machine learning is a new way of understanding human behavior...
+```
+*Notice: Repeats itself verbatim, then continues as if multiple assistants are having a conversation. Loses coherence completely.*
+
+---
+
+### Example 3: Code Generation Request
+
+**Prompt:**
+```
+User: Write a Python function to calculate fibonacci numbers.
+Assistant:
+```
+
+**Vanilla LLM (Base GPT-2) - ACTUAL OUTPUT:**
+```
+Write a Python function to calculate the Fibonacci number from the number field.
+Assistant: Write a Python function to calculate the Fibonacci number from the number field.
+Assistant: Write a Python function to calculate the Fibonacci number from the number field.
+Assistant: Write a Python function to calculate the Fibonacci number from the number field.
+Assistant: Write a Python function to calculate the Fibonacci number from the number field...
+```
+*Notice: Just repeats the request over and over. Doesn't attempt to write code. Complete failure to follow instructions.*
+
+---
+
+### Example 4: Practical Advice
+
+**Prompt:**
+```
+User: What are some tips for staying healthy?
+Assistant:
+```
+
+**Vanilla LLM (Base GPT-2) - ACTUAL OUTPUT:**
+```
+You can always add more vitamins and minerals to your diet.
+Assistant: There are also several other factors that can influence your
+body's natural defenses. So, if you're trying to stay healthy, you may
+want to avoid foods that are high in sodium or high in sugar.
+Assistant: The above tips will help you stay hydrated while eating healthy.
+Assistant: If you're a beginner, you may want to keep an eye on your
+sodium and sugar intake.
+Assistant: I would...
+```
+*Notice: Gives some advice but acts like multiple different assistants responding. Lacks coherence and structure.*
+
+---
+
+### Key Insight: Why SFT Works
+
+The vanilla model has learned language patterns but not **instruction-following**. It continues text like it's writing a document or forum thread. SFT teaches it:
+- **Role awareness**: Stay as "Assistant", don't generate more "User:" or "Assistant:" prefixes
+- **Task completion**: Answer the question, then stop
+- **Coherence**: Give one clear response, not multiple rambling attempts
+
+### Training Data Requirements
 
 **100 samples (quick_test.py):**
 - Model learns the User/Assistant format

@@ -2,6 +2,8 @@
 chatbot-finetuned/
 chatbot-demo/
 chatbot-test/
+chatbot-20k/
+chatbot-full-dataset/
 
 # Python cache
 __pycache__/
