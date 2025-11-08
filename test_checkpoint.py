@@ -12,9 +12,7 @@ def generate_response(model, tokenizer, prompt, max_tokens=100):
         outputs = model.generate(
             **inputs,
             max_new_tokens=max_tokens,
-            temperature=0.7,
-            top_p=0.9,
-            do_sample=True,
+            do_sample=False,  # Greedy decoding for deterministic output
             pad_token_id=tokenizer.pad_token_id,
         )
 
@@ -22,7 +20,7 @@ def generate_response(model, tokenizer, prompt, max_tokens=100):
 
 
 print("="*80)
-print("TESTING CHECKPOINT-10000 (Step 10000 / 38976 - 25.7% complete)")
+print("TESTING CHECKPOINT-25000 (Step 25000 / 38976 - 64.1% complete)")
 print("="*80)
 
 # Test prompts
@@ -44,11 +42,11 @@ base_model = AutoModelForCausalLM.from_pretrained(
 base_model.eval()
 
 # Load checkpoint model
-print("Loading checkpoint-10000...")
-ckpt_tokenizer = AutoTokenizer.from_pretrained("./chatbot-full-dataset/checkpoint-10000")
+print("Loading checkpoint-25000...")
+ckpt_tokenizer = AutoTokenizer.from_pretrained("./chatbot-full-dataset/checkpoint-25000")
 ckpt_tokenizer.pad_token = ckpt_tokenizer.eos_token
 ckpt_model = AutoModelForCausalLM.from_pretrained(
-    "./chatbot-full-dataset/checkpoint-10000",
+    "./chatbot-full-dataset/checkpoint-25000",
     torch_dtype=torch.float16,
     device_map="auto"
 )
@@ -69,7 +67,7 @@ for i, prompt in enumerate(test_prompts, 1):
     print()
 
     # Checkpoint model
-    print("AFTER (Checkpoint-10000 - 25% trained):")
+    print("AFTER (Checkpoint-25000 - 64% trained):")
     print("-"*80)
     ckpt_output = generate_response(ckpt_model, ckpt_tokenizer, prompt)
     print(ckpt_output)
