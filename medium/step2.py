@@ -69,7 +69,12 @@ print(f"Training on {len(train_dataset)} examples")
 # Tokenize the dataset
 print("Tokenizing dataset...")
 def tokenize_function(examples):
-    return tokenizer(examples["text"], truncation=True, max_length=512, padding="max_length")
+    # Tokenize the text
+    tokenized = tokenizer(examples["text"], truncation=True, max_length=512, padding="max_length")
+    # Create labels by copying input_ids (deep copy for batched processing)
+    # The model will shift them internally for causal LM
+    tokenized["labels"] = [ids[:] for ids in tokenized["input_ids"]]
+    return tokenized
 
 tokenized_dataset = train_dataset.map(tokenize_function, batched=True, remove_columns=train_dataset.column_names)
 print("Tokenization complete")

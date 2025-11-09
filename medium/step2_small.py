@@ -67,7 +67,16 @@ print(f"Training on {len(train_dataset)} examples")
 # Tokenize
 print("Tokenizing dataset...")
 def tokenize_function(examples):
-    return tokenizer(examples["text"], truncation=True, max_length=512, padding="max_length")
+    # Tokenize with padding (following working approach)
+    tokenized = tokenizer(
+        examples["text"],
+        truncation=True,
+        max_length=512,
+        padding="max_length",
+    )
+    # Create labels - copy input_ids (list copy for batched processing)
+    tokenized["labels"] = [ids[:] for ids in tokenized["input_ids"]]
+    return tokenized
 
 tokenized_dataset = train_dataset.map(tokenize_function, batched=True, remove_columns=train_dataset.column_names)
 print("Tokenization complete")
@@ -80,19 +89,21 @@ training_args = TrainingArguments(
     per_device_train_batch_size=4,
     gradient_accumulation_steps=4,
     learning_rate=2e-5,
-    fp16=False,  # Disabled due to gradient scaler compatibility issues
+    bf16=torch.cuda.is_available(),  # Use bfloat16 for better stability
     save_strategy="epoch",
     save_total_limit=2,
     logging_steps=50,
     optim="adamw_torch",
     warmup_steps=500,
-    max_grad_norm=None,  # Disable gradient clipping to avoid FP16 issue
+    max_grad_norm=1.0,  # Enable gradient clipping to prevent gradient explosion!
     report_to="none",
     lr_scheduler_type="cosine",
     gradient_checkpointing=True,
+    remove_unused_columns=False,
+    dataloader_num_workers=0,
 )
 
-# Create data collator
+# Use DataCollatorForLanguageModeling
 data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
 # Create trainer
