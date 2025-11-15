@@ -4,6 +4,7 @@ from transformers import (
 )
 
 import torch
+import wandb
 from datasets import load_dataset
 
 # Load the base GPT-2 model (not instruction-tuned)
@@ -25,7 +26,7 @@ print("Model loaded successfully!")
 
 test_prompts = [ 
   "User: Can you help me write a poem about the ocean?\nAssistant:"
-  , "The quick brown fox jumps over the" 
+  , "Once upon a time" 
 ]
 
 for i, prompt in enumerate(test_prompts, 1):
@@ -112,7 +113,8 @@ args = TrainingArguments(
     fp16=False,
     gradient_checkpointing=False,
     lr_scheduler_type="cosine",
-    report_to="none",
+    report_to="wandb",
+    run_name="gpt2-large-sft-ultrachat",
     max_grad_norm=1.0,
 )
 
