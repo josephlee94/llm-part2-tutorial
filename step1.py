@@ -1,6 +1,7 @@
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM,
-    DataCollatorForLanguageModeling, Trainer, TrainingArguments, TrainerCallback
+    DataCollatorForLanguageModeling, Trainer, TrainingArguments,
+    DataCollatorForSeq2Seq, TrainerCallback
 )
 
 import torch
@@ -18,15 +19,15 @@ tokenizer.pad_token = tokenizer.eos_token
 
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
-    dtype=torch.float32,     # GPT-2 weights are in float32
+    torch_dtype=torch.bfloat16,     # Use bfloat16 to save memory
     device_map="auto",
 )
 
 print("Model loaded successfully!")
 
-test_prompts = [ 
+test_prompts = [
   "User: Can you help me write a poem about the ocean?\nAssistant:"
-  , "Once upon a time" 
+  , "Once upon a time"
 ]
 
 def test_model(model, tokenizer, step):
@@ -71,15 +72,16 @@ print(format_chat_prompt(dataset[0])[:500] + "...")
 
 def tokenize_function(example):
     text = format_chat_prompt(example)
-    result = tokenizer(
+    tokenized = tokenizer(
         text,
         truncation=True,
         max_length=1024,
         padding=False,  # Don't pad here, let collator handle it
     )
     # For causal LM, labels are the same as input_ids
-    result["labels"] = result["input_ids"][:]
-    return result
+    tokenized["labels"] = tokenized["input_ids"][:]
+
+    return { "input_ids": tokenized["input_ids"], "attention_mask": tokenized["attention_mask"], "labels": tokenized["input_ids"],  }
 
 tokenized_dataset = dataset.map(
     tokenize_function,
@@ -90,9 +92,15 @@ tokenized_dataset = dataset.map(
 print("Tokenization complete!")
 print(tokenized_dataset)
 
-collator = DataCollatorForLanguageModeling(
+# Split for eval (small eval set for periodic testing)
+train_dataset = tokenized_dataset
+eval_dataset = tokenized_dataset.select(range(min(100, len(tokenized_dataset))))
+
+collator = DataCollatorForSeq2Seq(
     tokenizer=tokenizer,
-    mlm=False
+    model=model,
+    padding=True,
+    pad_to_multiple_of=8  # Optional: for better performance
 )
 
 OUTPUT_DIR = "./sft-gpt2-large"
@@ -101,32 +109,35 @@ OUTPUT_DIR = "./sft-gpt2-large"
 args = TrainingArguments(
     output_dir=OUTPUT_DIR,
     logging_steps=25,
-    per_device_train_batch_size=16,          # for RTX6000 Ada
-    gradient_accumulation_steps=1,         
+    per_device_train_batch_size=1,          # Batch 1 is 30% faster due to less padding
+    gradient_accumulation_steps=16,         # effective batch size = 16
     learning_rate=2e-5,
     weight_decay=0.1,
     warmup_ratio=0.03,
     max_steps=3000,                         # or num_train_epochs=1/2/3
     save_steps=500,
     save_total_limit=2,
-    bf16=True,                              # if on A100/RTX 4090; else use fp16=True
+    bf16=True,                              # Mixed precision training - saves memory!
     fp16=False,
     gradient_checkpointing=False,
     lr_scheduler_type="cosine",
     report_to="wandb",
     run_name="gpt2-large-sft-ultrachat",
     max_grad_norm=1.0,
+    eval_strategy="steps",     # Test model every 500 steps
+    eval_steps=500,
 )
 
 class SimpleTestCallback(TrainerCallback):
-    def on_save(self, args, state, control, **kwargs):
+    def on_evaluate(self, args, state, control, **kwargs):
         test_model(kwargs['model'], tokenizer, state.global_step)
 
 # 5) Train
 trainer = Trainer(
     model=model,
     args=args,
-    train_dataset=tokenized_dataset,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
     data_collator=collator,
     callbacks=[SimpleTestCallback()],
 )
