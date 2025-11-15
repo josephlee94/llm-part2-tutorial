@@ -60,15 +60,15 @@ def format_chat_prompt(example):
             formatted_text += f"User: {content}\n"
         elif role == "assistant":
             formatted_text += f"Assistant: {content}\n"
-    formatted_text += tokenizer.eos_token  # Add this!
+    formatted_text += tokenizer.eos_token
     return formatted_text
 
 print(f"\n Loading dataset '{DATASET_NAME}'")
-dataset = load_dataset(DATASET_NAME, split="train_sft[:5000]", streaming=False)
+dataset = load_dataset(DATASET_NAME, split="train_sft[:100000]", streaming=False)
 
 print(f"RAW FORMAT:\n {dataset[0]['messages'][:2]}\n") # Show first 2 messages
 print("\nPREPROCESSED FORMAT:")
-print(format_chat_prompt(dataset[0])[:500] + "...")
+print(format_chat_prompt(dataset[0])[:700] + "...")
 
 def tokenize_function(example):
     text = format_chat_prompt(example)
