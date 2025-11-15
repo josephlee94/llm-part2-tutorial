@@ -29,23 +29,23 @@ test_prompts = [
   , "Once upon a time" 
 ]
 
-for i, prompt in enumerate(test_prompts, 1):
-    print(f"Prompt:\n{prompt}")
+def test_model(model, tokenizer, step):
+    print(f"\n{'='*60}")
+    print(f"Testing at step {step}")
+    print(f"{'='*60}")
+    model.eval()
+    for prompt in test_prompts:
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        with torch.no_grad():
+            outputs = model.generate(**inputs, max_new_tokens=40, pad_token_id=tokenizer.eos_token_id)
+        completion = tokenizer.decode(outputs[0], skip_special_tokens=True)[len(prompt):]
+        print(f"Prompt: {prompt}")
+        print(f"Output: {completion}\n")
+    model.train()
+    print(f"{'='*60}\n")
 
-    # Tokenize the inputs
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-    
-    # Run the model on the inputs
-    with torch.no_grad():
-        outputs = model.generate( **inputs, max_new_tokens=40,
-            pad_token_id=tokenizer.eos_token_id
-        )
-    
-    # De-tokenize to get the output
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    completion = generated_text[len(prompt):]
-    
-    print(f"Model Output (together with prompt):\n{prompt}{completion}")
+# Test before training
+test_model(model, tokenizer, step=0)
 
 DATASET_NAME = "HuggingFaceH4/ultrachat_200k"
 
@@ -116,7 +116,13 @@ args = TrainingArguments(
     report_to="wandb",
     run_name="gpt2-large-sft-ultrachat",
     max_grad_norm=1.0,
+    eval_strategy="steps",     # Add this
+    eval_steps=500,   
 )
+
+class SimpleTestCallback(TrainerCallback):
+    def on_evaluate(self, args, state, control, **kwargs):
+        test_model(kwargs['model'], tokenizer, state.global_step)
 
 # 5) Train
 trainer = Trainer(
@@ -124,6 +130,7 @@ trainer = Trainer(
     args=args,
     train_dataset=tokenized_dataset,
     data_collator=collator,
+    callbacks=[SimpleTestCallback()],
 )
 
 trainer.train()
