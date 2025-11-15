@@ -99,14 +99,13 @@ OUTPUT_DIR = "./sft-gpt2-large"
 # 4) TrainingArguments
 args = TrainingArguments(
     output_dir=OUTPUT_DIR,
-    logging_steps=50,
+    logging_steps=25,
     per_device_train_batch_size=1,          # start small for XL
     gradient_accumulation_steps=16,         # effective batch size = 16
     learning_rate=2e-5,
     weight_decay=0.1,
     warmup_ratio=0.03,
     max_steps=3000,                         # or num_train_epochs=1/2/3
-    logging_steps=20,
     save_steps=500,
     save_total_limit=2,
     bf16=True,                              # if on A100/RTX 4090; else use fp16=True
