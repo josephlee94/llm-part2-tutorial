@@ -1,6 +1,6 @@
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM,
-    DataCollatorForLanguageModeling, Trainer, TrainingArguments
+    DataCollatorForLanguageModeling, Trainer, TrainingArguments, TrainerCallback
 )
 
 import torch
@@ -78,7 +78,7 @@ def tokenize_function(example):
         padding=False,  # Don't pad here, let collator handle it
     )
     # For causal LM, labels are the same as input_ids
-    result["labels"] = result["input_ids"].copy()
+    result["labels"] = result["input_ids"][:]
     return result
 
 tokenized_dataset = dataset.map(
@@ -116,12 +116,10 @@ args = TrainingArguments(
     report_to="wandb",
     run_name="gpt2-large-sft-ultrachat",
     max_grad_norm=1.0,
-    eval_strategy="steps",     # Add this
-    eval_steps=500,   
 )
 
 class SimpleTestCallback(TrainerCallback):
-    def on_evaluate(self, args, state, control, **kwargs):
+    def on_save(self, args, state, control, **kwargs):
         test_model(kwargs['model'], tokenizer, state.global_step)
 
 # 5) Train
