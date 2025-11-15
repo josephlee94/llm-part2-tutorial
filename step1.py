@@ -101,8 +101,8 @@ OUTPUT_DIR = "./sft-gpt2-large"
 args = TrainingArguments(
     output_dir=OUTPUT_DIR,
     logging_steps=25,
-    per_device_train_batch_size=1,          # start small for XL
-    gradient_accumulation_steps=16,         # effective batch size = 16
+    per_device_train_batch_size=16,          # for RTX6000 Ada
+    gradient_accumulation_steps=1,         
     learning_rate=2e-5,
     weight_decay=0.1,
     warmup_ratio=0.03,
