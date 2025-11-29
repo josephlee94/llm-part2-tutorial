@@ -158,8 +158,8 @@ OUTPUT_DIR = "./sft-gpt2-large-lora"
 args = TrainingArguments(
     output_dir=OUTPUT_DIR,
     logging_steps=25,
-    per_device_train_batch_size=4,          # Can use larger batch with LoRA (less memory)
-    gradient_accumulation_steps=4,          # effective batch size = 16
+    per_device_train_batch_size=1,          # Can use larger batch with LoRA (less memory)
+    gradient_accumulation_steps=16,          # effective batch size = 16
     learning_rate=2e-4,                     # LoRA often benefits from higher LR
     weight_decay=0.01,
     warmup_ratio=0.03,
